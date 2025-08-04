@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from agents import Agent, Runner, trace, function_tool
 from openai.types.responses import ResponseTextDeltaEvent
 from typing import Dict
+import asyncio
 
 
 
@@ -20,14 +21,8 @@ if __name__ == "__main__":
         model="gpt-4o-mini",
         tools=[get_weather],
     )
-
-    # Create a runner for the agent
-    # runner = Runner(agent)
-
-    # Run the agent and print the response
-    # response = runner.run("What's the weather like in New York?")
-    import asyncio
-
+    
+    # Define the main function to run the agent
     async def main():
         with trace("Asking on the weather"):
             result = await Runner.run(agent, "What's the weather like in Tel Aviv in the next 3 days, give me all the details you know?")
