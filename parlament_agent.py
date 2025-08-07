@@ -67,6 +67,7 @@ def write_hebrew_to_file(text: str) -> str:
     print("Writing Hebrew text to output.txt...")
     with open('output_scripts/hebrew_output.txt', 'w', encoding='utf-8') as f:
         f.write(text)
+        print(f"Please review: \n\n\n{text}\n\n\n")
     return f"Hebrew text successfully written to output.txt"
 
 @function_tool
@@ -75,6 +76,7 @@ def original_script(text: str) -> str:
     print("Writing original script to output.txt...")
     with open('output_scripts/original_script.txt', 'w', encoding='utf-8') as f:
         f.write(text)
+        print(f"Please review: \n\n\n{text}\n\n\n")
     return f"Original script successfully written to original_script.txt"
 
 # English to Hebrew translator agent
@@ -87,9 +89,9 @@ english_hebrew_translator_agent = Agent(
     handoff_description="Translate English text to Hebrew with high accuracy and natural flow."
 )
 
-copy_writer_agent = Agent(
-    name = 'CopyWriter',
-    instructions = config['agents']['copywriter']['instructions'],
+scripter_agent = Agent(
+    name = 'Scripter',
+    instructions = config['agents']['scripter']['instructions'],
     model = "gpt-4o-mini",
     tools = [shauli_parlament_member_tool, 
              avi_parlament_member_tool, 
@@ -103,32 +105,13 @@ copy_writer_agent = Agent(
 
 async def main():
     with trace("Parliament meet again :)"):
-        # Create the copywriter agent and run it with the instructions
-        print("Creating the copywriter agent...")
-        print("Instructions:", config['agents']['copywriter']['instructions'])
-        result = await Runner.run(copy_writer_agent, config['agents']['copywriter']['instructions'])
-        
-        # Save the original script to a file
-        print("English Script:")
-        with open('output_scripts/original_script.txt', 'r', encoding='utf-8') as f:
-            original_script_content = f.read()
+        # Create the scripter agent and run it with the instructions
+        print("Creating the scripter agent...")
+        print("Instructions:", config['agents']['scripter']['instructions'])
+        result = await Runner.run(scripter_agent, config['agents']['scripter']['instructions'])
 
-        print('=================\n\n Hebrew Script:')
-        with open('output_scripts/hebrew_output.txt', 'r', encoding='utf-8') as f:
-            hebrew_script_content = f.read()
+        print(f"result: {result.final_output}...")  # Print the first 200 characters of the result
         
-        print(original_script_content)
-        print('=================')
-        print(hebrew_script_content)
-        
-        # Translate to Hebrew
-        # translation_message = f"Translate the following English script to Hebrew: {result.final_output}"
-        # hebrew_result = await Runner.run(english_hebrew_translator_agent, translation_message)
-        
-
-        # print("\nHebrew translation saved to output.txt")
-        # print("Hebrew Script Preview:")
-        # print(hebrew_result.final_output[:200] + "..." if len(hebrew_result.final_output) > 200 else hebrew_result.final_output)
 
 if __name__ == "__main__":
     asyncio.run(main())
