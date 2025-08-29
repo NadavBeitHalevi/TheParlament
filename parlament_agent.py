@@ -102,16 +102,18 @@ scripter_agent = Agent(
     )
 
 
-
-async def main():
+async def run_parliament_session() -> str:
     with trace("Parliament meet again :)"):
-        # Create the scripter agent and run it with the instructions
-        print("Creating the scripter agent...")
-        print("Instructions:", config['agents']['scripter']['instructions'])
-        result = await Runner.run(scripter_agent, config['agents']['scripter']['instructions'])
+        # update the script with current topic
+        input_topic = input("Enter the topic for the parliament session: ")
+        prompt = config['agents']['scripter']['instructions'].format(input_topic)
+        update_subject = prompt.format()
+        result = await Runner.run(scripter_agent, update_subject)
 
         print(f"result: {result.final_output}...")  # Print the first 200 characters of the result
-        
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("Starting the parliament session...")
+    asyncio.run(run_parliament_session())
+    print("Parliament session ended.")
