@@ -11,6 +11,11 @@ google_api_key = os.getenv('GOOGLE_API_KEY')
 with open('config.toml', 'r') as f:
     config = toml.load(f)
 
+azure_client: AsyncOpenAI = AsyncOpenAI(api_key=os.getenv('AZURE_API_KEY'),
+                                         base_url=os.getenv('AZURE_ENDPOINT'))
+
+azure_model =  OpenAIChatCompletionsModel(model=os.getenv('AZURE_DEPLOYMENT_NAME'),
+                                          openai_client=azure_client)
 
 gemini_client: AsyncOpenAI = AsyncOpenAI(api_key=google_api_key, base_url=GEMINI_BASE_URL)
 gemini_model = OpenAIChatCompletionsModel(model='gemini-2.0-flash', 
@@ -19,13 +24,13 @@ gemini_model = OpenAIChatCompletionsModel(model='gemini-2.0-flash',
 shauli_parlament_member_agent = Agent(
     name = 'Shauli',
     instructions = config['shauli']['instructions'],
-    model = gemini_model
+    model = azure_model
     )
 
 amatzia_parlament_member_agent = Agent(
     name = 'Amatzia',
     instructions = config['amatzia']['instructions'],
-    model = gemini_model
+    model = azure_model
     )
 
 karakov_parlament_member_agent = Agent(
@@ -103,9 +108,10 @@ scripter_agent = Agent(
 
 
 async def run_parliament_session() -> str:
-    with trace("Parliament meet again :)"):
+    input_topic = input("Enter the topic for the parliament session: ")
+
+    with trace(f"Parliament meet again - and today's topic is: {input_topic}"):
         # update the script with current topic
-        input_topic = input("Enter the topic for the parliament session: ")
         prompt = config['agents']['scripter']['instructions'].format(input_topic)
         update_subject = prompt.format()
         result = await Runner.run(scripter_agent, update_subject)

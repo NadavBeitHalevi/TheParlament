@@ -56,6 +56,9 @@ If you encounter words or phrases that don't have direct Hebrew equivalents,
 provide the most appropriate Hebrew equivalent and explain if necessary.
 before traslating you will save the english script to file
 After translating, use the write_hebrew_to_file tool to save the Hebrew text.
+these are the files locations:
+output_scripts/original_script.txt
+output_scripts/hebrew_output.txt
 """
 
 [agents.scripter]
