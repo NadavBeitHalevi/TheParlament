@@ -102,3 +102,5 @@ topics = ["current events", "middle east", "politics", "social issues"]
 [tools.file_operations]
 hebrew_output_description = "Write Hebrew text to output.txt file"
 original_script_description = "Write original script to original_script.txt file"
+
+
