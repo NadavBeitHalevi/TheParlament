@@ -1,15 +1,17 @@
 import os
-from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner
 import asyncio
 import toml
 
+
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-load_dotenv()
 google_api_key = os.getenv('GOOGLE_API_KEY')
 with open('config.toml', 'r') as f:
     config = toml.load(f)
+
+load_dotenv()
 
 azure_client: AsyncOpenAI = AsyncOpenAI(api_key=os.getenv('AZURE_API_KEY'),
                                          base_url=os.getenv('AZURE_ENDPOINT'))
