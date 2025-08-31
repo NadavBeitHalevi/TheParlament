@@ -121,6 +121,9 @@ async def run_parliament_session() -> str:
         print(f"result: {result.final_output}...")  # Print the first 200 characters of the result
 
 
+
+
+
 if __name__ == "__main__":
     print("Starting the parliament session...")
     asyncio.run(run_parliament_session())
