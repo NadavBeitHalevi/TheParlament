@@ -4,6 +4,7 @@ from openai import AsyncOpenAI
 from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner
 import asyncio
 import toml
+from guardrails_config import create_content_safety_guard, create_parliament_guard, create_pii_guard
 
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -93,7 +94,7 @@ english_hebrew_translator_agent = Agent(
     instructions=config['translator']['instructions'],
     model=gemini_model,
     tools=[original_script, write_hebrew_to_file],
-    handoff_description="Translate English text to Hebrew with high accuracy and natural flow."
+    handoff_description="Translate English text and save it. Once done, use the write_hebrew_to_file tool with high accuracy and natural flow."
 )
 
 scripter_agent = Agent(
@@ -112,13 +113,37 @@ scripter_agent = Agent(
 async def run_parliament_session() -> str:
     input_topic = input("Enter the topic for the parliament session: ")
 
+    # lets validate the topic first
+    is_prompt_safe = create_content_safety_guard()
+    try:
+        validated_topic = is_prompt_safe.validate(input_topic)
+        print("✅ Topic validation passed.")
+        input_topic = validated_topic.validated_output
+    except Exception as e:
+        print(f"❌ Topic validation failed: {e}")
+        return "Session aborted due to unsafe topic."
+    
+    # Initialize guardrails
+    parliament_guard = create_parliament_guard()
+    pii_guard = create_pii_guard()
+    print(f"And today's topic is: {input_topic}, let's go!")
     with trace(f"Parliament meet again - and today's topic is: {input_topic}"):
         # update the script with current topic
         prompt = config['agents']['scripter']['instructions'].format(input_topic)
         update_subject = prompt.format()
         result = await Runner.run(scripter_agent, update_subject)
 
-        print(f"result: {result.final_output}...")  # Print the first 200 characters of the result
+        # Validate output with guardrails
+        try:
+            validated_result = parliament_guard.validate(result.final_output)
+            final_output = pii_guard.validate(validated_result.validated_output)
+            print(f"✅ Guardrails validation passed")
+            print(f"result: {final_output.validated_output}...")
+            return final_output.validated_output
+        except Exception as e:
+            print(f"⚠️ Guardrails validation warning: {e}")
+            print(f"result: {result.final_output}...")
+            return result.final_output
 
 
 

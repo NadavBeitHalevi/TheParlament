@@ -3,5 +3,6 @@ openai
 openai-agents
 toml
 asyncio
+guardrails-ai
 
 
