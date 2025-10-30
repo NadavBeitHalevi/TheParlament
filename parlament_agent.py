@@ -4,8 +4,6 @@ from openai import AsyncOpenAI, RateLimitError
 from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner, input_guardrail, GuardrailFunctionOutput
 import asyncio
 import toml
-from guardrails import Guard, Validator, register_validator
-from guardrails.classes.validation.validation_result import ValidationResult, FailResult, PassResult
 from typing import Dict, Any
 import time
 
@@ -36,7 +34,7 @@ with open('config.toml', 'r') as f:
 azure_client: AsyncOpenAI = AsyncOpenAI(api_key=os.getenv('AZURE_API_KEY'),
                                          base_url=os.getenv('AZURE_ENDPOINT'))
 
-azure_model =  OpenAIChatCompletionsModel(model=os.getenv('AZURE_DEPLOYMENT_NAME'),
+azure_model =  OpenAIChatCompletionsModel(model='gpt-4o',
                                           openai_client=azure_client)
 
 gemini_client: AsyncOpenAI = AsyncOpenAI(api_key=google_api_key, base_url=GEMINI_BASE_URL)
@@ -52,7 +50,7 @@ shauli_parlament_member_agent = Agent(
 amatzia_parlament_member_agent = Agent(
     name = 'Amatzia',
     instructions = config['amatzia']['instructions'],
-    model = azure_model
+    model = gemini_model
     )
 
 karakov_parlament_member_agent = Agent(
@@ -125,7 +123,7 @@ english_hebrew_translator_agent = Agent(
 scripter_agent = Agent(
     name = 'Scripter',
     instructions = config['agents']['scripter']['instructions'],
-    model = azure_model,  # Changed from gpt-3.5-turbo-1106 to avoid rate limits
+    model = gemini_model,  # Changed from gpt-3.5-turbo-1106 to avoid rate limits
     tools = [shauli_parlament_member_tool, 
              avi_parlament_member_tool, 
              karkov_parlament_member_tool, 
