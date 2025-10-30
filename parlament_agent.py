@@ -1,18 +1,37 @@
 import os
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
-from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner
+from openai import AsyncOpenAI, RateLimitError
+from agents import Agent, OpenAIChatCompletionsModel, function_tool, trace, Runner, input_guardrail, GuardrailFunctionOutput
 import asyncio
 import toml
-from guardrails_config import create_content_safety_guard, create_parliament_guard, create_pii_guard
+from guardrails import Guard, Validator, register_validator
+from guardrails.classes.validation.validation_result import ValidationResult, FailResult, PassResult
+from typing import Dict, Any
+import time
 
+
+guardrail_agent = Agent(
+    name='Guardrail_script_agent',
+    instructions='You are an agent that follows guardrails for safe input and output handling. ' \
+    'Ensure all inputs and outputs are validated accordingly. no swearing or toxic language is allowed.',
+    model="gemini-2.0-flash"
+)
+
+
+@input_guardrail
+async def run_scripter_with_guardrails(ctx, agent, message):
+    """Run the guardrail agent to validate input and output."""
+    result = await Runner.run(agent, message)
+    return GuardrailFunctionOutput(f"found an unsafe output: {result.final_output}")
+    
+
+# Load environment variables FIRST
+load_dotenv()
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 google_api_key = os.getenv('GOOGLE_API_KEY')
 with open('config.toml', 'r') as f:
     config = toml.load(f)
-
-load_dotenv()
 
 azure_client: AsyncOpenAI = AsyncOpenAI(api_key=os.getenv('AZURE_API_KEY'),
                                          base_url=os.getenv('AZURE_ENDPOINT'))
@@ -73,6 +92,7 @@ karkov_parlament_member_tool = karakov_parlament_member_agent.as_tool(tool_name=
 def write_hebrew_to_file(text: str) -> str:
     """Write Hebrew text to output.txt file"""
     print("Writing Hebrew text to output.txt...")
+    
     with open('output_scripts/hebrew_output.txt', 'w', encoding='utf-8') as f:
         f.write(text)
         print(f"Please review: \n\n\n{text}\n\n\n")
@@ -82,6 +102,11 @@ def write_hebrew_to_file(text: str) -> str:
 def original_script(text: str) -> str:
     """Write original script to output.txt file"""
     print("Writing original script to output.txt...")
+    #delete old txt files
+    for filename in os.listdir('output_scripts'):
+        if filename.endswith('.txt'):
+            os.remove(os.path.join('output_scripts', filename))
+            print(f"Deleted old file: {filename}")
     with open('output_scripts/original_script.txt', 'w', encoding='utf-8') as f:
         f.write(text)
         print(f"Please review: \n\n\n{text}\n\n\n")
@@ -100,7 +125,7 @@ english_hebrew_translator_agent = Agent(
 scripter_agent = Agent(
     name = 'Scripter',
     instructions = config['agents']['scripter']['instructions'],
-    model = "gpt-4o-mini",
+    model = azure_model,  # Changed from gpt-3.5-turbo-1106 to avoid rate limits
     tools = [shauli_parlament_member_tool, 
              avi_parlament_member_tool, 
              karkov_parlament_member_tool, 
@@ -108,48 +133,42 @@ scripter_agent = Agent(
              amatzia_parlament_member_tool],
     handoffs=[english_hebrew_translator_agent] # This allows the copywriter to translate the script to Hebrew after writing it
     )
-
+#input_guardrails=[run_scripter_with_guardrails]
 
 async def run_parliament_session() -> str:
     input_topic = input("Enter the topic for the parliament session: ")
 
-    # lets validate the topic first
-    is_prompt_safe = create_content_safety_guard()
-    try:
-        validated_topic = is_prompt_safe.validate(input_topic)
-        print("✅ Topic validation passed.")
-        input_topic = validated_topic.validated_output
-    except Exception as e:
-        print(f"❌ Topic validation failed: {e}")
-        return "Session aborted due to unsafe topic."
-    
-    # Initialize guardrails
-    parliament_guard = create_parliament_guard()
-    pii_guard = create_pii_guard()
     print(f"And today's topic is: {input_topic}, let's go!")
-    with trace(f"Parliament meet again - and today's topic is: {input_topic}"):
-        # update the script with current topic
-        prompt = config['agents']['scripter']['instructions'].format(input_topic)
-        update_subject = prompt.format()
-        result = await Runner.run(scripter_agent, update_subject)
-
-        # Validate output with guardrails
+    
+    # Retry logic with exponential backoff for rate limit errors
+    max_retries = 5
+    base_delay = 2  # Start with 2 seconds
+    
+    for attempt in range(max_retries):
         try:
-            validated_result = parliament_guard.validate(result.final_output)
-            final_output = pii_guard.validate(validated_result.validated_output)
-            print(f"✅ Guardrails validation passed")
-            print(f"result: {final_output.validated_output}...")
-            return final_output.validated_output
+            with trace(f"Parliament meet again - and today's topic is: {input_topic}"):
+                # update the script with current topic
+                prompt = config['agents']['scripter']['instructions'].format(input_topic)
+                update_subject = prompt.format()
+                result = await Runner.run(scripter_agent, update_subject)
+                return ("Final Script Output:\n", result.final_output)
+        
+        except RateLimitError as e:
+            if attempt < max_retries - 1:
+                # Calculate exponential backoff: 2, 4, 8, 16, 32 seconds
+                delay = base_delay * (2 ** attempt)
+                print(f"⚠️  Rate limit hit. Retrying in {delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                await asyncio.sleep(delay)
+            else:
+                print(f"❌ Rate limit error after {max_retries} attempts. Please try again later.")
+                raise
+        
         except Exception as e:
-            print(f"⚠️ Guardrails validation warning: {e}")
-            print(f"result: {result.final_output}...")
-            return result.final_output
-
-
-
-
+            print(f"❌ Unexpected error: {e}")
+            raise
 
 if __name__ == "__main__":
     print("Starting the parliament session...")
-    asyncio.run(run_parliament_session())
+    script_result = asyncio.run(run_parliament_session())
+    print(script_result)
     print("Parliament session ended.")
