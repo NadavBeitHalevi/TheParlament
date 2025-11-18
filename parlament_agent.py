@@ -50,25 +50,25 @@ shauli_parlament_member_agent = Agent(
 amatzia_parlament_member_agent = Agent(
     name = 'Amatzia',
     instructions = config['amatzia']['instructions'],
-    model = gemini_model
+    model = azure_model
     )
 
 karakov_parlament_member_agent = Agent(
     name = 'Karakov',
     instructions = config['karakov']['instructions'],
-    model = gemini_model
+    model = "gpt-4o-mini"
     )
 
 hektor_parlament_member_agent = Agent(
     name = 'Hektor',
     instructions = config['hektor']['instructions'],
-    model = gemini_model
+    model = "gpt-4o-mini"
     )
 
 avi_parlament_member_agent = Agent(
     name = 'Avi',
     instructions = config['avi']['instructions'],
-    model = gemini_model
+    model = "gpt-4o-mini"
     )
 
 shauli_parlament_member_tool = shauli_parlament_member_agent.as_tool(tool_name='shauli_parliament_member', 
@@ -129,7 +129,8 @@ scripter_agent = Agent(
              karkov_parlament_member_tool, 
              hektor_parlament_member_tool, 
              amatzia_parlament_member_tool],
-    handoffs=[english_hebrew_translator_agent] # This allows the copywriter to translate the script to Hebrew after writing it
+    handoffs=[english_hebrew_translator_agent],
+    input_guardrails=[run_scripter_with_guardrails] # This allows the copywriter to translate the script to Hebrew after writing it
     )
 #input_guardrails=[run_scripter_with_guardrails]
 

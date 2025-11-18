@@ -4,5 +4,6 @@ openai-agents
 toml
 asyncio
 guardrails-ai
+gradio
 
 
