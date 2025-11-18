@@ -7,22 +7,6 @@ import toml
 from typing import Dict, Any
 import time
 
-
-guardrail_agent = Agent(
-    name='Guardrail_script_agent',
-    instructions='You are an agent that follows guardrails for safe input and output handling. ' \
-    'Ensure all inputs and outputs are validated accordingly. no swearing or toxic language is allowed.',
-    model="gemini-2.0-flash"
-)
-
-
-@input_guardrail
-async def run_scripter_with_guardrails(ctx, agent, message):
-    """Run the guardrail agent to validate input and output."""
-    result = await Runner.run(agent, message)
-    return GuardrailFunctionOutput(f"found an unsafe output: {result.final_output}")
-    
-
 # Load environment variables FIRST
 load_dotenv()
 
@@ -41,49 +25,63 @@ gemini_client: AsyncOpenAI = AsyncOpenAI(api_key=google_api_key, base_url=GEMINI
 gemini_model = OpenAIChatCompletionsModel(model='gemini-2.0-flash', 
                                           openai_client=gemini_client)
 
-shauli_parlament_member_agent = Agent(
+guardrail_agent = Agent(
+    name='Guardrail_script_agent',
+    instructions='You are an agent that follows guardrails for safe input and output handling. ' \
+    'Ensure all inputs and outputs are validated accordingly. no swearing or toxic language is allowed.',
+    model=gemini_model
+)
+
+
+@input_guardrail
+async def run_scripter_with_guardrails(ctx, agent, message):
+    """Run the guardrail agent to validate input and output."""
+    result = await Runner.run(guardrail_agent, message)
+    return GuardrailFunctionOutput(f"found an unsafe output: {result.final_output}", tripwire_triggered=True)
+
+shauli_parliament_member_agent = Agent(
     name = 'Shauli',
     instructions = config['shauli']['instructions'],
     model = azure_model
     )
 
-amatzia_parlament_member_agent = Agent(
+amatzia_parliament_member_agent = Agent(
     name = 'Amatzia',
     instructions = config['amatzia']['instructions'],
     model = azure_model
     )
 
-karakov_parlament_member_agent = Agent(
+karakov_parliament_member_agent = Agent(
     name = 'Karakov',
     instructions = config['karakov']['instructions'],
-    model = "gpt-4o-mini"
+    model = gemini_model
     )
 
-hektor_parlament_member_agent = Agent(
+hektor_parliament_member_agent = Agent(
     name = 'Hektor',
     instructions = config['hektor']['instructions'],
-    model = "gpt-4o-mini"
+    model = gemini_model
     )
 
-avi_parlament_member_agent = Agent(
+avi_parliament_member_agent = Agent(
     name = 'Avi',
     instructions = config['avi']['instructions'],
-    model = "gpt-4o-mini"
+    model = gemini_model
     )
 
-shauli_parlament_member_tool = shauli_parlament_member_agent.as_tool(tool_name='shauli_parliament_member', 
+shauli_parliament_member_tool = shauli_parliament_member_agent.as_tool(tool_name='shauli_parliament_member', 
                                                                      tool_description=config['shauli']['instructions'])
 
-amatzia_parlament_member_tool = amatzia_parlament_member_agent.as_tool(tool_name='amatzia_parliament_member', 
+amatzia_parliament_member_tool = amatzia_parliament_member_agent.as_tool(tool_name='amatzia_parliament_member', 
                                                                        tool_description=config['amatzia']['instructions'])
 
-hektor_parlament_member_tool = hektor_parlament_member_agent.as_tool(tool_name='hektor_parliament_member', 
+hektor_parliament_member_tool = hektor_parliament_member_agent.as_tool(tool_name='hektor_parliament_member', 
                                                                      tool_description=config['hektor']['instructions'])
 
-avi_parlament_member_tool = avi_parlament_member_agent.as_tool(tool_name='avi_parliament_member', 
+avi_parliament_member_tool = avi_parliament_member_agent.as_tool(tool_name='avi_parliament_member', 
                                                                tool_description=config['avi']['instructions'])
 
-karkov_parlament_member_tool = karakov_parlament_member_agent.as_tool(tool_name='karkov_parliament_member', 
+karkov_parliament_member_tool = karakov_parliament_member_agent.as_tool(tool_name='karkov_parliament_member', 
                                                                       tool_description=config['karakov']['instructions'])
 
 @function_tool
@@ -123,14 +121,13 @@ english_hebrew_translator_agent = Agent(
 scripter_agent = Agent(
     name = 'Scripter',
     instructions = config['agents']['scripter']['instructions'],
-    model = gemini_model,  # Changed from gpt-3.5-turbo-1106 to avoid rate limits
-    tools = [shauli_parlament_member_tool, 
-             avi_parlament_member_tool, 
-             karkov_parlament_member_tool, 
-             hektor_parlament_member_tool, 
-             amatzia_parlament_member_tool],
-    handoffs=[english_hebrew_translator_agent],
-    input_guardrails=[run_scripter_with_guardrails] # This allows the copywriter to translate the script to Hebrew after writing it
+    model = gemini_model,
+    tools = [shauli_parliament_member_tool, 
+             avi_parliament_member_tool, 
+             karkov_parliament_member_tool, 
+             hektor_parliament_member_tool, 
+             amatzia_parliament_member_tool],
+    handoffs=[english_hebrew_translator_agent]
     )
 #input_guardrails=[run_scripter_with_guardrails]
 
@@ -140,8 +137,8 @@ async def run_parliament_session() -> str:
     print(f"And today's topic is: {input_topic}, let's go!")
     
     # Retry logic with exponential backoff for rate limit errors
-    max_retries = 5
-    base_delay = 2  # Start with 2 seconds
+    max_retries = 3
+    base_delay = 35  # Start with 35 seconds for rate limits
     
     for attempt in range(max_retries):
         try:
@@ -153,14 +150,20 @@ async def run_parliament_session() -> str:
                 return ("Final Script Output:\n", result.final_output)
         
         except RateLimitError as e:
+            error_msg = str(e)
+            import re
+            retry_match = re.search(r'retry in (\d+\.?\d*)s', error_msg)
+            
             if attempt < max_retries - 1:
-                # Calculate exponential backoff: 2, 4, 8, 16, 32 seconds
-                delay = base_delay * (2 ** attempt)
-                print(f"⚠️  Rate limit hit. Retrying in {delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                if retry_match:
+                    delay = float(retry_match.group(1)) + 5
+                else:
+                    delay = base_delay * (2 ** attempt)
+                print(f"⚠️  Rate limit hit. Retrying in {delay:.0f} seconds... (Attempt {attempt + 1}/{max_retries})")
                 await asyncio.sleep(delay)
             else:
                 print(f"❌ Rate limit error after {max_retries} attempts. Please try again later.")
-                raise
+                return "Rate limit error. Please try again later."
         
         except Exception as e:
             print(f"❌ Unexpected error: {e}")

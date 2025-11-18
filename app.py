@@ -5,20 +5,20 @@ from openai import RateLimitError
 from agents import trace, Runner, Agent
 from typing import Dict, Any
 
-# Import from parlament_agent
-from parlament_agent import (
-    config,
-    run_scripter_with_guardrails,
-    shauli_parlament_member_tool,
-    avi_parlament_member_tool,
-    karkov_parlament_member_tool,
-    hektor_parlament_member_tool,
-    amatzia_parlament_member_tool,
+# Import from parliament_agent
+from parliament_agent import (
+    run_parliament_session,
     english_hebrew_translator_agent,
-    gemini_model,
-    scripter_agent
+    guardrail_agent,
+    shauli_parliament_member_tool,
+    avi_parliament_member_tool,
+    karkov_parliament_member_tool,
+    hektor_parliament_member_tool,
+    amatzia_parliament_member_tool,
+    config,
+    scripter_agent,
+    gemini_model
 )
-
 
 async def run_parliament_session_ui(topic: str):
     """Run the parliament session with the given topic for UI"""
