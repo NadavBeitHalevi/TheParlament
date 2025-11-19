@@ -6,7 +6,7 @@ from agents import trace, Runner, Agent
 from typing import Dict, Any
 
 # Import from parliament_agent
-from parliament_agent import (
+from parliament_agent_open_ai_sdk import (
     run_parliament_session,
     english_hebrew_translator_agent,
     guardrail_agent,
