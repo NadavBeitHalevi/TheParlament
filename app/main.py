@@ -4,11 +4,12 @@ from openai.types.responses import ResponseTextDeltaEvent
 from typing import Dict
 import asyncio
 
-
+from guardrails_config import MyGuardrailsAgent
+from guardrails.exceptions import GuardrailTripwireTriggered
 
 if __name__ == "__main__":
     # Load environment variables from .env file
-    load_dotenv()
+    load_dotenv(override=True)
 
     # Define the agent with a function tool
     @function_tool
@@ -24,6 +25,20 @@ if __name__ == "__main__":
     
     # Define the main function to run the agent
     async def main():
+
+        ga = MyGuardrailsAgent()
+        ga_agent_client = ga.get_agent()
+
+        try:
+            response = await ga_agent_client.responses.create(
+                model="gpt-4o-mini",
+                input="Hello world! Tell me a joke.",
+            )
+        except GuardrailTripwireTriggered as exc:
+            print(f"Guardrail triggered: {exc.guardrail_result.info}")
+        # Guardrails run automatically
+        print(response.llm_response.output_text)
+        
         with trace("Asking on the weather"):
             result = await Runner.run(agent, "What's the weather like in Tel Aviv in the next 3 days, give me all the details you know?")
             print(result.final_output)
