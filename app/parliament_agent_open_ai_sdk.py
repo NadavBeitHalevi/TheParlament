@@ -26,7 +26,9 @@ load_dotenv()
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 google_api_key = os.getenv('GOOGLE_API_KEY')
 
-with open('config.toml', 'r') as f:
+# Get the directory of this file to build correct path to config
+config_path = os.path.join(os.path.dirname(__file__), 'config.toml')
+with open(config_path, 'r') as f:
     config = toml.load(f)
 
 # Initialize AI model clients
@@ -119,7 +121,10 @@ def write_hebrew_to_file(text: str) -> str:
     """Write Hebrew translation to file."""
     print("Writing Hebrew text to output.txt...")
     
-    with open('../output_scripts/hebrew_output.txt', 'w', encoding='utf-8') as f:
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
+    os.makedirs(output_dir, exist_ok=True)  # Ensure directory exists
+    output_path = os.path.join(output_dir, 'hebrew_output.txt')
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(text)
         print(f"Please review: \n\n\n{text}\n\n\n")
     return f"Hebrew text successfully written to output.txt"
@@ -129,13 +134,18 @@ def original_script(text: str) -> str:
     """Write original English script to file."""
     print("Writing original script...")
     
-    # Clean up old output files
-    for filename in os.listdir('../output_scripts'):
-        if filename.endswith('.txt'):
-            os.remove(os.path.join('../output_scripts', filename))
-            print(f"Deleted old file: {filename}")
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
+    os.makedirs(output_dir, exist_ok=True)  # Ensure directory exists
     
-    with open('../output_scripts/original_script.txt', 'w', encoding='utf-8') as f:
+    # Clean up old output files
+    if os.path.exists(output_dir):
+        for filename in os.listdir(output_dir):
+            if filename.endswith('.txt'):
+                os.remove(os.path.join(output_dir, filename))
+                print(f"Deleted old file: {filename}")
+    
+    output_path = os.path.join(output_dir, 'original_script.txt')
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(text)
         print(f"Script saved ({len(text)} characters)")
     

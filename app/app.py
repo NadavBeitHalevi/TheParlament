@@ -5,6 +5,7 @@ Features input validation, multi-agent debate generation, and Hebrew translation
 """
 
 import asyncio
+import os
 import re
 from typing import Tuple
 
@@ -76,16 +77,22 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                 hebrew_output = ""
                 
                 try:
-                    with open('../output_scripts/original_script.txt', 'r', encoding='utf-8') as f:
+                    output_path = os.path.join(os.path.dirname(__file__), '..', 'output_scripts', 'original_script.txt')
+                    with open(output_path, 'r', encoding='utf-8') as f:
                         original_output = f.read()
                 except FileNotFoundError:
                     original_output = "Original script file not found."
+                except Exception as e:
+                    original_output = f"Error reading original script: {str(e)}"
                 
                 try:
-                    with open('../output_scripts/hebrew_output.txt', 'r', encoding='utf-8') as f:
+                    output_path = os.path.join(os.path.dirname(__file__), '..', 'output_scripts', 'hebrew_output.txt')
+                    with open(output_path, 'r', encoding='utf-8') as f:
                         hebrew_output = f.read()
                 except FileNotFoundError:
                     hebrew_output = "Hebrew translation file not found."
+                except Exception as e:
+                    hebrew_output = f"Error reading Hebrew translation: {str(e)}"
                 
                 return original_output, hebrew_output
         
@@ -236,4 +243,6 @@ with gr.Blocks(title="Parliament Script Generator", theme=gr.themes.Soft()) as d
     )
 
 if __name__ == "__main__":
-    demo.launch(share=False, server_name="127.0.0.1", server_port=7862)
+    demo.launch(share=True, 
+                server_name="127.0.0.1", 
+                server_port=7863)
