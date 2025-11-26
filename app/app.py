@@ -10,6 +10,7 @@ import re
 from typing import Tuple
 
 import gradio as gr
+from gradio.themes import Soft
 from openai import RateLimitError
 from agents import trace, Runner
 from guardrails_config import MyGuardrailsAgent
@@ -70,7 +71,7 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                 # Format the prompt and run the scripter agent
                 prompt = config['agents']['scripter']['instructions'].format(topic)
                 update_subject = prompt.format()
-                result = await Runner.run(scripter_agent, update_subject)
+                _ = await Runner.run(scripter_agent, update_subject)
                 
                 # Read generated output files
                 original_output = ""
@@ -118,7 +119,7 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
     
     return "❌ Unexpected error occurred", ""
 
-def process_topic(topic: str, progress=gr.Progress()) -> Tuple[str, str, str]:
+def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[str, str, str]:
     """Process user topic through validation and parliament generation pipeline.
     
     Args:
@@ -146,11 +147,9 @@ def process_topic(topic: str, progress=gr.Progress()) -> Tuple[str, str, str]:
 # ============================================================================
 # Gradio Web Interface
 # ============================================================================
-
-with gr.Blocks(title="Parliament Script Generator", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
     # Error display components
     error_output = gr.Textbox(visible=False)
-    error_alert = gr.HTML(value="", visible=False)
     
     gr.Markdown(
         """
@@ -183,12 +182,13 @@ with gr.Blocks(title="Parliament Script Generator", theme=gr.themes.Soft()) as d
                     ["healthcare policy"],
                     ["economic development"]
                 ],
-                inputs=topic_input
+                inputs=[topic_input],
+                outputs=None
             )
     
     # Error display area
     with gr.Row():
-        error_alert
+        error_alert = gr.HTML(value="", visible=False)
     
     gr.Markdown("---")
     
