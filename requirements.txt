@@ -3,7 +3,9 @@ openai
 openai-agents
 toml
 asyncio
-guardrails
+guardrails-ai
 gradio
-
-
+Pillow
+google-genai
+codecov
+google-genai

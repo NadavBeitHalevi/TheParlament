@@ -75,7 +75,9 @@ It should include humor, anecdotes, and interesting facts.
 You should include all in the conversation!
 The script should be well-structured and easy to follow. Today's topic: {0}.
 your style of writting is British humorous - sharp, spicy funny, no holding back with sophisticated, read between the lines humor.
-keep it light, appropriate, with idiom from the hebrew language, sarcastic with dark humor
+keep it light, appropriate, with idiom from the hebrew language, sarcastic with dark humor.
+According to the tools provided, you will pick the next friend to talk into the conversation.
+The sence should end with no conclusion and leave the reader with something to think about.
 Once the script is written, you will handoffs to the english_hebrew_translator_agent for translation to Hebrew.
 """
 
