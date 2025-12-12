@@ -68,9 +68,9 @@ shauli_parliament_member_agent = Agent(
     model=azure_model
 )
 
-amatzia_parliament_member_agent = Agent(
-    name='Amatzia',
-    instructions=config['amatzia']['instructions'],
+avner_parliament_member_agent = Agent(
+    name='Avner',
+    instructions=config['avner']['instructions'],
     model=azure_model
 )
 
@@ -98,9 +98,9 @@ shauli_parliament_member_tool = shauli_parliament_member_agent.as_tool(
     tool_description=config['shauli']['instructions']
 )
 
-amatzia_parliament_member_tool = amatzia_parliament_member_agent.as_tool(
-    tool_name='amatia_parliament_member',
-    tool_description=config['amatzia']['instructions']
+avner_parliament_member_tool = avner_parliament_member_agent.as_tool(
+    tool_name='avner_parliament_member',
+    tool_description=config['avner']['instructions']
 )
 
 hektor_parliament_member_tool = hektor_parliament_member_agent.as_tool(
@@ -179,7 +179,7 @@ scripter_agent = Agent(
         avi_parliament_member_tool,
         karkov_parliament_member_tool,
         hektor_parliament_member_tool,
-        amatzia_parliament_member_tool,
+        avner_parliament_member_tool,
     ],
     handoffs=[english_hebrew_translator_agent]
 )
@@ -214,15 +214,16 @@ def create_comic_panel() -> None:
     # Add style enforcement - Generate WITHOUT text to avoid AI text generation issues
     prompt = f"""
     You are an expert Comic Book Director and Cinematographer. Your goal is to convert a text-based dialogue script into visual comic panels.
-    
-    IMPORTANT: Generate the comic panels WITHOUT any text, speech bubbles, or dialogue. Leave space for speech bubbles to be added later.
+    Select 1 panel from the script that best captures the essence of the dialogue and characters.
+    Create a comic panel based on that panel, following the visual requirements below.
+    IMPORTANT: Generate the comic panels WITH text ENGLISH ONLY, speech bubbles, or dialogue.
     
     Visual Requirements:
     1. **Pacing:** Break the script into logical panels (one panel = one specific visual moment)
     2. **Composition:** Use varied shots (close-up, wide shot, over-the-shoulder, etc.)
     3. **Characters:** Show who is speaking through their body language, gestures, and facial expressions
     4. **Setting:** Coffee house on Friday afternoon, warm lighting, rustic background
-    5. **Style:** Nordic/Japanese comic style, clean lines, muted color palette
+    5. **Style:** Snoopy (Like Snoopy Charlie Brown, Peanuts etc.) comic style, clean lines, muted color palette
     6. **Layout:** Single comic page with multiple panels arranged in a grid
     
     Character Descriptions from the style image(left to right):
@@ -237,6 +238,7 @@ def create_comic_panel() -> None:
     Create a comic panel based on that panel, following the visual requirements above.
     Generate the comic panel as an image and return it.
     Bubble text will be in ENGLISH ONLY
+    use the style reference image provided to match character appearances and overall art style.
     """
 
     response = client.models.generate_content(

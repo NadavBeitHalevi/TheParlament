@@ -5,8 +5,7 @@ user input for content safety, PII detection, and custom validation rules.
 """
 
 import dotenv
-from agents import Runner, InputGuardrailTripwireTriggered, OutputGuardrailTripwireTriggered
-from guardrails import GuardrailAgent
+from agents import Runner, InputGuardrailTripwireTriggered, OutputGuardrailTripwireTriggered, Agent
 from pydantic import BaseModel
 
 # Load environment variables for API keys
@@ -37,7 +36,7 @@ class MyGuardrailsAgent:
 
     def __init__(self):
         """Initialize the guardrails agent with validation pipeline configuration."""
-        self.PIPELINE_CONFIG = {
+        self.PIPELINE_CONFIG = { # pylint: disable=R0903 # too-few-public-methods #type: ignore
             "version": 1,
             "pre_flight": {
                 "version": 1,
@@ -79,8 +78,7 @@ class MyGuardrailsAgent:
                 ],
             },
         }
-        self.agent = GuardrailAgent(
-            config=self.PIPELINE_CONFIG,
+        self.agent = Agent(
             name="UserInput Validation Agent",
             instructions="Validate and sanitize user input to ensure it adheres to content policies.",
         )

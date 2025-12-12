@@ -55,8 +55,8 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
             raise GuardrailsValidationError(error_msg)
         
         # Use the sanitized/validated input
-        topic = validation_result.sanitized_input
-        print(f"✅ Input validated: {topic}")
+        validation_result = validation_result.sanitized_input
+        print(f"✅ Input validated: {validation_result}")
     
     except GuardrailsValidationError:
         raise  # Re-raise for proper error handling in process_topic
@@ -71,8 +71,9 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                 # Format the prompt and run the scripter agent
                 prompt = config['agents']['scripter']['instructions'].format(topic)
                 update_subject = prompt.format()
-                _ = await Runner.run(scripter_agent, update_subject)
-                
+                result = await Runner.run(scripter_agent, update_subject, max_turns=30)
+                print("✅ Parliament session completed.")
+                print(f"Parliament session result: {result}")
                 # Read generated output files
                 original_output = ""
                 hebrew_output = ""
@@ -175,7 +176,7 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
             
             submit_btn = gr.Button("🎭 Generate Parliament Script", variant="primary", size="lg")
             
-            gr.Examples(
+            gr.Examples( # type: ignore
                 examples=[
                     ["climate change"],
                     ["education reform"],
