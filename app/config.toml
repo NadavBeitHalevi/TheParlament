@@ -12,7 +12,7 @@ Group moderator and discussion facilitator
 """
 
 
-[Avner]
+[avner]
 name = "Avner"
 role = "Taxi Driver"
 instructions = """

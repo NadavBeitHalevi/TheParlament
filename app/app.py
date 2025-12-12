@@ -16,7 +16,7 @@ from agents import trace, Runner
 from guardrails_config import MyGuardrailsAgent
 
 # Import parliament components
-from parliament_agent_open_ai_sdk import config, scripter_agent
+from parliament_agent_open_ai_sdk import config, scripter_agent, create_comic_panel
 
 class GuardrailsValidationError(Exception):
     """Exception raised when guardrails validation fails.
@@ -82,6 +82,8 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                     output_path = os.path.join(os.path.dirname(__file__), '..', 'output_scripts', 'original_script.txt')
                     with open(output_path, 'r', encoding='utf-8') as f:
                         original_output = f.read()
+                        # now, lets try to generate an image based on the script
+                        create_comic_panel()
                 except FileNotFoundError:
                     original_output = "Original script file not found."
                 except Exception as e:
@@ -199,8 +201,7 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
             original_output = gr.Textbox(
                 label="Parliament Discussion",
                 lines=20,
-                max_lines=30,
-                show_copy_button=True
+                max_lines=30
             )
         
         with gr.Column():
@@ -209,7 +210,7 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
                 label="תרגום עברי",
                 lines=20,
                 max_lines=30,
-                show_copy_button=True,
+
                 text_align="right"
             )
     
@@ -245,5 +246,5 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
 
 if __name__ == "__main__":
     demo.launch(share=True, 
-                server_name="127.0.0.1", 
-                server_port=7863)
+                server_name="0.0.0.0", 
+                server_port=7860)
