@@ -4,7 +4,7 @@ import logging
 import app.parliament_agent_open_ai_sdk as parliament_agent_open_ai_sdk
 mcp = FastMCP("account_server")
 
-@mcp.tool(name="The Parliament Service", 
+@mcp.tool(name="The_Parliament_Service", 
           description="Creates a parliamentary discussion on a given topic.")
 async def get_account_info(script_topic: str) -> dict[str, Any]:
     # Simulate fetching account info (replace with real logic)
