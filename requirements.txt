@@ -10,3 +10,5 @@ google-genai
 codecov
 google-genai
 mcp
+mcp[cli]
+mcp-server-fetch
