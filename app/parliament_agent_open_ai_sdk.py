@@ -259,7 +259,7 @@ def create_comic_panel() -> None:
 # CLI Entry Point (unused in web interface)
 # ============================================================================
 
-async def run_parliament_session() -> str:
+async def run_parliament_session(topic_name: str | None) -> str:
     """Command-line interface for running parliament session (deprecated - use web UI)."""
     raw_input_topic = input("Enter the topic for the parliament session: ")
     
@@ -309,5 +309,5 @@ async def run_parliament_session() -> str:
 if __name__ == "__main__":
     print("🏛️ Parliament Script Generator (CLI)\n")
     print("Note: Use app.py for the web interface with guardrails validation.\n")
-    script_result = asyncio.run(run_parliament_session())
+    script_result = asyncio.run(run_parliament_session(topic_name=None))
     print("\nSession ended.")
