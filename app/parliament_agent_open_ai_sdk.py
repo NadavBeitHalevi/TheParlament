@@ -260,10 +260,13 @@ def create_comic_panel() -> None:
 # ============================================================================
 
 async def run_parliament_session(topic_name: str | None) -> str:
-    """Command-line interface for running parliament session (deprecated - use web UI)."""
-    raw_input_topic = input("Enter the topic for the parliament session: ")
+    """Generate parliamentary discussion script for given topic."""
+    import logging
     
-    print(f"🎭 Topic: {raw_input_topic}\n")
+    # Use provided topic or default
+    raw_input_topic = topic_name if topic_name else "The impact of technology on society"
+    
+    logging.info(f"🎭 Topic: {raw_input_topic}")
     
     # Configuration for API rate limit retry logic
     max_retries = 3
@@ -275,14 +278,14 @@ async def run_parliament_session(topic_name: str | None) -> str:
                 # Format prompt and run scripter agent
                 prompt = config['agents']['scripter']['instructions'].format(raw_input_topic)
                 update_subject = prompt.format()
-                print(f"🤖 Running Scripter Agent...")
+                logging.info(f"🤖 Running Scripter Agent...")
                 result = await Runner.run(scripter_agent, update_subject, max_turns=30)
-                print("✅ Scripter Agent completed.")
+                logging.info("✅ Scripter Agent completed.")
                 # trying to create comic panel
-                print("==============================")
-                print("Creating comic panel... hold tight!")
-                print("This may take a few moments... since the script is long..")
-                print("==============================")
+                logging.info("==============================")
+                logging.info("Creating comic panel... hold tight!")
+                logging.info("This may take a few moments... since the script is long..")
+                logging.info("==============================")
                 create_comic_panel()
                 return f"Final Script Output:\n{result.final_output}"
         
@@ -293,14 +296,14 @@ async def run_parliament_session(topic_name: str | None) -> str:
             
             if attempt < max_retries - 1:
                 delay = float(retry_match.group(1)) + 5 if retry_match else base_delay * (2 ** attempt)
-                print(f"⚠️ Rate limit. Retrying in {delay:.0f}s (Attempt {attempt + 1}/{max_retries})")
+                logging.warning(f"⚠️ Rate limit. Retrying in {delay:.0f}s (Attempt {attempt + 1}/{max_retries})")
                 await asyncio.sleep(delay)
             else:
-                print(f"❌ Rate limit error after {max_retries} attempts.")
+                logging.error(f"❌ Rate limit error after {max_retries} attempts.")
                 return "Rate limit exceeded. Please try again later."
         
         except Exception as e:
-            print(f"❌ Error: {e}")
+            logging.error(f"❌ Error: {e}")
             raise
     
     return "Unexpected error occurred"

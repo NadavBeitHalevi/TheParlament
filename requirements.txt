@@ -9,3 +9,4 @@ Pillow
 google-genai
 codecov
 google-genai
+mcp
