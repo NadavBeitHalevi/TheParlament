@@ -1,14 +1,26 @@
 import sys
 from pathlib import Path
 
-# Add app directory to Python path to import sibling modules
-current_dir = Path(__file__).resolve().parent
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
+# Add project root to Python path to import app modules
+# This ensures imports work even when file is copied to temp directory
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Add app directory as fallback for when running in original location
+app_dir = Path(__file__).resolve().parent
+if str(app_dir) not in sys.path:
+    sys.path.insert(0, str(app_dir))
 
 from mcp.server.fastmcp import FastMCP
 from typing import Any
 import logging
+
+# Try importing from package first, then fallback to direct import
+try:
+    from app import parliament_agent_open_ai_sdk
+except ImportError:
+    import parliament_agent_open_ai_sdk
 
 
 
@@ -22,6 +34,7 @@ async def generate_parliamentary_script(script_topic: str) -> Any:
     # return f"Generating parliamentary script for topic: some topic"
     if not script_topic:
         script_topic = "The impact of technology on society"
+    
     english_script = await parliament_agent_open_ai_sdk.run_parliament_session(script_topic) # type: ignore
     return f"english_script: {english_script}"
     
