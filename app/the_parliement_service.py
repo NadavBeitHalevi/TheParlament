@@ -14,8 +14,8 @@ async def generate_parliamentary_script(script_topic: str) -> Any:
     if not script_topic:
         script_topic = "The impact of technology on society"
     
-    english_script = await parliament_agent_open_ai_sdk.run_parliament_session(script_topic) # type: ignore
-    return f"english_script: {english_script}"
+    # english_script = await parliament_agent_open_ai_sdk.run_parliament_session(script_topic) # type: ignore
+    return f"english_script: wheather"
     
 
 @mcp.tool(name="hello_test_tool", 
