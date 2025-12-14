@@ -1,0 +1,23 @@
+[project]
+name = "the-parliament"
+version = "0.1.0"
+description = "Parliamentary discussion generator MCP server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "fastmcp",
+    "openai",
+    "python-dotenv",
+    "toml",
+    "google-generativeai",
+    "Pillow",
+    "agents-sdk",
+]
+
+[project.scripts]
+parliament-mcp = "app.the_parliement_service:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
