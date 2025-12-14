@@ -19,13 +19,14 @@ async def generate_parliamentary_script(script_topic: str) -> dict[str, Any]:
         model="gemini-2.5-flash-image",
         contents=[prompt],
     )
-
-    
+    logging.info("Generated content from Gemini model.")
+    logging.info("Processing generated content parts.")
     for part in response.parts:
         if part.text is not None:
             print(part.text)
         elif part.inline_data is not None:
             image = part.as_image()
+            logging.info("Generated image part, simulating parliamentary script generation.")
             return {    
                 "script_topic": "image created",
                 "english_script": f"Simulated parliamentary script on the topic: {image}"
