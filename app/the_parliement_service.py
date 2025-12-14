@@ -1,7 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from typing import Any
 import logging
-from app import parliament_agent_open_ai_sdk
 
 mcp = FastMCP("the_parliament_service")
 
