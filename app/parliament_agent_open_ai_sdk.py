@@ -29,13 +29,15 @@ from PIL import Image, ImageDraw, ImageFont  # type: ignore
 load_dotenv()
 
 # Load configuration
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-google_api_key = os.getenv('GOOGLE_API_KEY')
-
 # Get the directory of this file to build correct path to config
 config_path = os.path.join(os.path.dirname(__file__), 'config.toml')
 with open(config_path, 'r') as f:
     config = toml.load(f)
+
+# Load settings from config
+GEMINI_BASE_URL = config['settings']['base_url']
+GEMINI_MODEL = config['settings']['model']
+google_api_key = os.getenv('GOOGLE_API_KEY')
 
 # Initialize AI model clients
 azure_client: AsyncOpenAI = AsyncOpenAI(
@@ -54,7 +56,7 @@ gemini_client: AsyncOpenAI = AsyncOpenAI(
 )
 
 gemini_model = OpenAIChatCompletionsModel(
-    model='gemini-2.5-flash',
+    model=GEMINI_MODEL,
     openai_client=gemini_client
 )
 
@@ -62,60 +64,60 @@ gemini_model = OpenAIChatCompletionsModel(
 # Parliament Member Agents
 # ============================================================================
 
-shauli_parliament_member_agent = Agent(
-    name='Shauli',
-    instructions=config['shauli']['instructions'],
-    model=azure_model
-)
-
-avner_parliament_member_agent = Agent(
-    name='Avner',
-    instructions=config['avner']['instructions'],
-    model=azure_model
-)
-
-karakov_parliament_member_agent = Agent(
-    name='Karakov',
-    instructions=config['karakov']['instructions'],
+tal_parliament_member_agent = Agent(
+    name=config['Tal']['name'],
+    instructions=config['Tal']['instructions'],
     model=gemini_model
 )
 
-hektor_parliament_member_agent = Agent(
-    name='Hektor',
-    instructions=config['hektor']['instructions'],
+elad_parliament_member_agent = Agent(
+    name=config['Elad']['name'],
+    instructions=config['Elad']['instructions'],
     model=gemini_model
 )
 
-avi_parliament_member_agent = Agent(
-    name='Avi',
-    instructions=config['avi']['instructions'],
+nadav_parliament_member_agent = Agent(
+    name=config['Nadav']['name'],
+    instructions=config['Nadav']['instructions'],
+    model=gemini_model
+)
+
+itay_parliament_member_agent = Agent(
+    name=config['Itay']['name'],
+    instructions=config['Itay']['instructions'],
+    model=gemini_model
+)
+
+dor_parliament_member_agent = Agent(
+    name=config['Dor']['name'],
+    instructions=config['Dor']['instructions'],
     model=gemini_model
 )
 
 # Convert agents to tools for use by scripter agent
-shauli_parliament_member_tool = shauli_parliament_member_agent.as_tool(
-    tool_name='shauli_parliament_member',
-    tool_description=config['shauli']['instructions']
+tal_parliament_member_tool = tal_parliament_member_agent.as_tool(
+    tool_name='tal_parliament_member',
+    tool_description=config['Tal']['instructions']
 )
 
-avner_parliament_member_tool = avner_parliament_member_agent.as_tool(
-    tool_name='avner_parliament_member',
-    tool_description=config['avner']['instructions']
+elad_parliament_member_tool = elad_parliament_member_agent.as_tool(
+    tool_name='elad_parliament_member',
+    tool_description=config['Elad']['instructions']
 )
 
-hektor_parliament_member_tool = hektor_parliament_member_agent.as_tool(
-    tool_name='hektor_parliament_member',
-    tool_description=config['hektor']['instructions']
+nadav_parliament_member_tool = nadav_parliament_member_agent.as_tool(
+    tool_name='nadav_parliament_member',
+    tool_description=config['Nadav']['instructions']
 )
 
-avi_parliament_member_tool = avi_parliament_member_agent.as_tool(
-    tool_name='avi_parliament_member',
-    tool_description=config['avi']['instructions']
+itay_parliament_member_tool = itay_parliament_member_agent.as_tool(
+    tool_name='itay_parliament_member',
+    tool_description=config['Itay']['instructions']
 )
 
-karkov_parliament_member_tool = karakov_parliament_member_agent.as_tool(
-    tool_name='karkov_parliament_member',
-    tool_description=config['karakov']['instructions']
+dor_parliament_member_tool = dor_parliament_member_agent.as_tool(
+    tool_name='dor_parliament_member',
+    tool_description=config['Dor']['instructions']
 )
 
 # ============================================================================
@@ -175,11 +177,11 @@ scripter_agent = Agent(
     instructions=config['agents']['scripter']['instructions'],
     model=gemini_model,
     tools=[
-        shauli_parliament_member_tool,
-        avi_parliament_member_tool,
-        karkov_parliament_member_tool,
-        hektor_parliament_member_tool,
-        avner_parliament_member_tool,
+        tal_parliament_member_tool,
+        elad_parliament_member_tool,
+        nadav_parliament_member_tool,
+        itay_parliament_member_tool,
+        dor_parliament_member_tool,
     ],
     handoffs=[english_hebrew_translator_agent]
 )
@@ -312,5 +314,7 @@ async def run_parliament_session(topic_name: str | None) -> str:
 if __name__ == "__main__":
     print("🏛️ Parliament Script Generator (CLI)\n")
     print("Note: Use app.py for the web interface with guardrails validation.\n")
-    script_result = asyncio.run(run_parliament_session(topic_name=None))
+    print("what topic would you like the parliament to debate on?")
+    topic_name = input("Enter topic (or press Enter for default): ").strip() or None
+    script_result = asyncio.run(run_parliament_session(topic_name=topic_name))
     print("\nSession ended.")
