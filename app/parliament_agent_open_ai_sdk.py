@@ -6,6 +6,7 @@ Defines parliament member agents, tools, and orchestration logic for generating
 parliamentary debate scripts with automatic Hebrew translation.
 """
 
+import logging
 import os
 import asyncio
 import re
@@ -83,8 +84,8 @@ nadav_parliament_member_agent = Agent(
 )
 
 itay_parliament_member_agent = Agent(
-    name=config['Itay']['name'],
-    instructions=config['Itay']['instructions'],
+    name=config['Ido']['name'],
+    instructions=config['Ido']['instructions'],
     model=gemini_model
 )
 
@@ -111,8 +112,8 @@ nadav_parliament_member_tool = nadav_parliament_member_agent.as_tool(
 )
 
 itay_parliament_member_tool = itay_parliament_member_agent.as_tool(
-    tool_name='itay_parliament_member',
-    tool_description=config['Itay']['instructions']
+    tool_name='ido_parliament_member',
+    tool_description=config['Ido']['instructions']
 )
 
 dor_parliament_member_tool = dor_parliament_member_agent.as_tool(
@@ -186,6 +187,31 @@ scripter_agent = Agent(
     handoffs=[english_hebrew_translator_agent]
 )
 
+def get_parliament_images() -> list[Image.Image]:
+    """ Load parliament images from the images folder. 
+    used for simulating parliament members.
+    """
+    images: list[Image.Image] = []
+    # Get the images directory path relative to this file
+    images_dir = os.path.join(os.path.dirname(__file__), '..', 'images')
+    
+    if not os.path.exists(images_dir):
+        logging.warning(f"Images directory not found: {images_dir}")
+        return images
+    
+    for filename in os.listdir(images_dir):
+        if filename.endswith('.png') or filename.endswith('.png'):
+            image_path = os.path.join(images_dir, filename)
+            try:
+                img = Image.open(image_path)
+                images.append(img)
+                logging.info(f"Loaded image: {filename}")
+            except Exception as e:
+                logging.error(f"Error loading image {filename}: {e}")
+    
+    logging.info(f"Loaded {len(images)} images from {images_dir}")
+    return images
+
 # ============================================================================
 # Call Google GenAI API using the Nano Banana SDK to create the comic page
 # ============================================================================
@@ -194,16 +220,6 @@ def create_comic_panel() -> None:
     """Create a comic panel using Google GenAI Nano Banana SDK."""
     google_api_key = os.getenv("GOOGLE_API_KEY")
     client = genai.Client(api_key=google_api_key)  # type: ignore
-
-    # 1. Load the style reference image
-    try:
-        # Assumes 'image_example.png' is in the root project directory
-        style_image_path = os.path.join(os.path.dirname(__file__), '..', 'image_example.png')
-        style_image = Image.open(style_image_path)
-        print(f"Successfully loaded style reference image from: {style_image_path}")
-    except FileNotFoundError:
-        print(f"Error: Style reference image not found at '{style_image_path}'. Please place your image there.") # type: ignore
-        return
 
     # 2. Load the script
     output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
@@ -222,30 +238,31 @@ def create_comic_panel() -> None:
     
     Visual Requirements:
     1. **Pacing:** Break the script into logical panels (one panel = one specific visual moment)
-    2. **Composition:** Use varied shots (close-up, wide shot, over-the-shoulder, etc.)
+    2. **Composition:** Use wide shots and medium shots to capture group dynamics and individual expressions
     3. **Characters:** Show who is speaking through their body language, gestures, and facial expressions
-    4. **Setting:** Coffee house on Friday afternoon, warm lighting, rustic background
-    5. **Style:** Snoopy (Like Snoopy Charlie Brown, Peanuts etc.) comic style, clean lines, muted color palette
+    4. **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
+    5. **Style:** Avatar style, vibrant colors, dynamic poses, expressive faces
     6. **Layout:** Single comic page with multiple panels arranged in a grid
-    
-    Character Descriptions from the style image(left to right):
-    - Karakov: Zoo worker, older, quiet, dark humor in expression
-    - Avi: Unemployed, sarcastic look, ready for conflict
-    - Shauli: Group leader, humorous, center of attention
-    - Amatzia: Taxi driver, down-to-earth, authentic
-    - Hektor: Dentist, sensible, justice-oriented
+    7. **Text:** Include speech bubbles and dialogue in ENGLISH ONLY, ensuring clarity and readability (MUST BE CLEAR AND LEGIBLE)
     
     Script for visual interpretation: {script}
-    Select one panel from the script that best captures the essence of the dialogue and characters.
+    After breaking the script into logical panels, select one panel that best captures the essence of the dialogue and characters.
     Create a comic panel based on that panel, following the visual requirements above.
     Generate the comic panel as an image and return it.
     Bubble text will be in ENGLISH ONLY
     use the style reference image provided to match character appearances and overall art style.
+
+    Panel members names: Dor, Elad, Ido, Nadav, Tal (IN THAT ORDER!According to the images provided).
+    The panel members age is 43 years old. Stay true to images provided. 
+    When creating the comic panel, ensure each character's appearance aligns with their respective images.
+    use the images name as reference for each character appearance.!!! MUST USE THE IMAGES PROVIDED AS REFERENCE FOR CHARACTER APPEARANCE AND STYLE!!!!!
+
     """
 
+    style_images = get_parliament_images()
     response = client.models.generate_content(
         model="gemini-2.5-flash-image",
-        contents=[prompt, style_image],
+        contents=[prompt, style_images], # type: ignore
     )
     
     for index, part in enumerate(response.parts): # type: ignore
