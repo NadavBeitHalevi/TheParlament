@@ -5,9 +5,10 @@ Features input validation, multi-agent debate generation, and Hebrew translation
 """
 
 import asyncio
+import logging
 import os
 import re
-from typing import Tuple
+from typing import Any, Tuple
 
 import gradio as gr
 from gradio.themes import Soft
@@ -27,14 +28,14 @@ class GuardrailsValidationError(Exception):
     pass
 
 
-async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
+async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
     """Run parliament session: validate input, generate debate, translate to Hebrew.
     
     Args:
         topic: The discussion topic for the parliament
         
     Returns:
-        Tuple of (original_script, hebrew_translation)
+        Tuple of (original_script, hebrew_translation, comic_image)
         
     Raises:
         GuardrailsValidationError: If input validation fails
@@ -72,11 +73,12 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                 prompt = config['agents']['scripter']['instructions'].format(topic)
                 update_subject = prompt.format()
                 result = await Runner.run(scripter_agent, update_subject, max_turns=30)
-                print("✅ Parliament session completed.")
-                print(f"Parliament session result: {result}")
+                logging.info("✅ Parliament session completed.")
+                logging.info(f"Parliament session result: {result}")
                 # Read generated output files
                 original_output = ""
                 hebrew_output = ""
+                comic_image = None
                 
                 try:
                     output_path = os.path.join(os.path.dirname(__file__), '..', 'output_scripts', 'original_script.txt')
@@ -98,7 +100,21 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                 except Exception as e:
                     hebrew_output = f"Error reading Hebrew translation: {str(e)}"
                 
-                return original_output, hebrew_output
+                # Load the generated comic panel
+                comic_image = None
+                try:
+                    parliament_image = os.path.join(os.path.dirname(__file__), '..', 'generated_comic_panel.png')
+                    if os.path.exists(parliament_image):
+                        from PIL import Image
+                        img = Image.open(parliament_image)
+                        comic_image = img
+                        print(f"✅ Comic panel loaded successfully: {parliament_image}")
+                    else:
+                        print(f"⚠️ Comic panel not found at: {parliament_image}")
+                except Exception as e:
+                    logging.error(f"Error loading generated comic panel: {str(e)}")
+
+                return original_output, hebrew_output, comic_image
         
         except RateLimitError as e:
             # Parse retry delay from API error message
@@ -113,16 +129,16 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str]:
                     delay = base_delay * (2 ** attempt)  # 30s, 60s, 120s
                 
                 print(f"⚠️ Rate limit. Retry {attempt + 1}/{max_retries} in {delay:.1f}s")
-                return f"⚠️ Rate limit exceeded. Retrying in {delay:.0f} seconds...", ""
+                return f"⚠️ Rate limit exceeded. Retrying in {delay:.0f} seconds...", "", None
             else:
-                return f"❌ Rate limit error after {max_retries} attempts. Try again in a few minutes.", ""
+                return f"❌ Rate limit error after {max_retries} attempts. Try again in a few minutes.", "", None
         
         except Exception as e:
-            return f"❌ Error: {str(e)}", ""
+            return f"❌ Error: {str(e)}", "", None
     
-    return "❌ Unexpected error occurred", ""
+    return "❌ Unexpected error occurred", "", None
 
-def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[str, str, str]:
+def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[str, str, any, str]:
     """Process user topic through validation and parliament generation pipeline.
     
     Args:
@@ -130,22 +146,22 @@ def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[st
         progress: Gradio progress indicator
         
     Returns:
-        Tuple of (original_output, hebrew_output, error_message)
+        Tuple of (original_output, hebrew_output, comic_image, error_message)
         error_message is empty string on success
     """
     if not topic or topic.strip() == "":
-        return "", "", "⚠️ Please enter a topic"
+        return "", "", None, "⚠️ Please enter a topic"
     
     progress(0, desc="Validating input...")
     progress(0.2, desc="Starting parliament session...")
     try:
-        original, hebrew = asyncio.run(run_parliament_session_ui(topic.strip()))
+        original, hebrew, comic_img = asyncio.run(run_parliament_session_ui(topic.strip()))
         progress(1.0, desc="Complete!")
-        return original, hebrew, ""
+        return original, hebrew, comic_img, ""
     except GuardrailsValidationError as e:
-        return "", "", f"🛡️ Input Validation Failed\n\n{str(e)}"
+        return "", "", None, f"🛡️ Input Validation Failed\n\n{str(e)}"
     except Exception as e:
-        return "", "", f"❌ Error: {str(e)}"
+        return "", "", None, f"❌ Error: {str(e)}"
 
 # ============================================================================
 # Gradio Web Interface
@@ -213,10 +229,17 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
 
                 text_align="right"
             )
+    with gr.Row():
+        # create image placeholder
+        comic_image = gr.Image(label="🎨 Generated Comic Panel", 
+                               type="pil",
+                               visible=False)
+    
+
     
     def handle_submit(topic: str):
         """Handle form submission and display results or errors."""
-        original, hebrew, error = process_topic(topic)
+        original, hebrew, comic_img, error = process_topic(topic)
         
         if error:
             # Show error in alert box
@@ -226,15 +249,24 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
                 <div style="color: #333; font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">{error}</div>
             </div>
             """
-            return gr.update(value=original), gr.update(value=hebrew), gr.update(value="", visible=False), gr.update(value=error_html, visible=True)
+            return (gr.update(value=original), 
+                    gr.update(value=hebrew), 
+                    gr.update(value=None, visible=False), 
+                    gr.update(value="", visible=False), 
+                    gr.update(value=error_html, visible=True))
         
-        # Clear error and show results
-        return gr.update(value=original), gr.update(value=hebrew), gr.update(value="", visible=False), gr.update(value="", visible=False)
+        # Clear error and show results with comic image
+        comic_visible = comic_img is not None
+        return (gr.update(value=original), 
+                gr.update(value=hebrew), 
+                gr.update(value=comic_img, visible=comic_visible), 
+                gr.update(value="", visible=False), 
+                gr.update(value="", visible=False))
     
     submit_btn.click(
         fn=handle_submit,
         inputs=[topic_input],
-        outputs=[original_output, hebrew_output, error_output, error_alert]
+        outputs=[original_output, hebrew_output, comic_image, error_output, error_alert]
     )
     
     gr.Markdown(

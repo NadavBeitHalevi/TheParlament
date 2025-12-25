@@ -128,20 +128,20 @@ dor_parliament_member_tool = dor_parliament_member_agent.as_tool(
 @function_tool
 def write_hebrew_to_file(text: str) -> str:
     """Write Hebrew translation to file."""
-    print("Writing Hebrew text to output.txt...")
+    logging.info("Writing Hebrew text to output.txt...")
     
     output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
     os.makedirs(output_dir, exist_ok=True)  # Ensure directory exists
     output_path = os.path.join(output_dir, 'hebrew_output.txt')
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(text)
-        print(f"Please review: \n\n\n{text}\n\n\n")
+        logging.info(f"Please review: \n\n\n{text}\n\n\n")
     return f"Hebrew text successfully written to output.txt"
 
 @function_tool
 def original_script(text: str) -> str:
     """Write original English script to file."""
-    print("Writing original script...")
+    logging.info("Writing original script...")
     
     output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
     os.makedirs(output_dir, exist_ok=True)  # Ensure directory exists
@@ -151,12 +151,12 @@ def original_script(text: str) -> str:
         for filename in os.listdir(output_dir):
             if filename.endswith('.txt'):
                 os.remove(os.path.join(output_dir, filename))
-                print(f"Deleted old file: {filename}")
+                logging.info(f"Deleted old file: {filename}")
     
     output_path = os.path.join(output_dir, 'original_script.txt')
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(text)
-        print(f"Script saved ({len(text)} characters)")
+        logging.info(f"Script saved ({len(text)} characters)")
     
     return "Original script successfully written to original_script.txt"
 
@@ -216,47 +216,22 @@ def get_parliament_images() -> list[Image.Image]:
 # Call Google GenAI API using the Nano Banana SDK to create the comic page
 # ============================================================================
 # Configure with your Google API Key
-def create_comic_panel() -> None:
+def create_comic_panel() -> Image.Image | None: 
     """Create a comic panel using Google GenAI Nano Banana SDK."""
     google_api_key = os.getenv("GOOGLE_API_KEY")
     client = genai.Client(api_key=google_api_key)  # type: ignore
 
-    # 2. Load the script
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'output_scripts')
-    script_path = os.path.join(output_dir, 'original_script.txt')
-    with open(script_path, 'r', encoding='utf-8') as f:
-        script = f.read()
-        print(f"Successfully loaded script from: {script_path}")
-
-
-    # Add style enforcement - Generate WITHOUT text to avoid AI text generation issues
-    prompt = f"""
-    You are an expert Comic Book Director and Cinematographer. Your goal is to convert a text-based dialogue script into visual comic panels.
-    Select 1 panel from the script that best captures the essence of the dialogue and characters.
-    Create a comic panel based on that panel, following the visual requirements below.
-    IMPORTANT: Generate the comic panels WITH text ENGLISH ONLY, speech bubbles, or dialogue.
-    
-    Visual Requirements:
-    1. **Pacing:** Break the script into logical panels (one panel = one specific visual moment)
-    2. **Composition:** Use wide shots and medium shots to capture group dynamics and individual expressions
-    3. **Characters:** Show who is speaking through their body language, gestures, and facial expressions
-    4. **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
-    5. **Style:** Avatar style, vibrant colors, dynamic poses, expressive faces
-    6. **Layout:** Single comic page with multiple panels arranged in a grid
-    7. **Text:** Include speech bubbles and dialogue in ENGLISH ONLY, ensuring clarity and readability (MUST BE CLEAR AND LEGIBLE)
-    
-    Script for visual interpretation: {script}
-    After breaking the script into logical panels, select one panel that best captures the essence of the dialogue and characters.
-    Create a comic panel based on that panel, following the visual requirements above.
-    Generate the comic panel as an image and return it.
-    Bubble text will be in ENGLISH ONLY
-    use the style reference image provided to match character appearances and overall art style.
-
+    prompt = """Create an image with all the members together in a single panel, saying togther: Leha'im! (Cheers!)
     Panel members names: Dor, Elad, Ido, Nadav, Tal (IN THAT ORDER!According to the images provided).
     The panel members age is 43 years old. Stay true to images provided. 
     When creating the comic panel, ensure each character's appearance aligns with their respective images.
     use the images name as reference for each character appearance.!!! MUST USE THE IMAGES PROVIDED AS REFERENCE FOR CHARACTER APPEARANCE AND STYLE!!!!!
-
+    **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
+    ALL 5 MEMBERS ARE TOGETHER IN THE SAME PANEL, CHEERING TOGETHER! MUST HAVE ALL 5 MEMBERS IN THE SAME PANEL!
+    **Style:** Cartoonish, vibrant colors, exaggerated expressions, dynamic poses, speech bubbles with "Leha'im!" text.
+    **Composition:** Balanced layout with members evenly spaced, engaging body language, and clear visibility of facial features.
+    **Mood:** Joyful, celebratory, energetic atmosphere reflecting camaraderie and fun.
+    **Additional Elements:** Include background details like bar counter, drinks, and other patrons to enhance the setting.
     """
 
     style_images = get_parliament_images()
@@ -270,10 +245,10 @@ def create_comic_panel() -> None:
             print(part.text)
         elif part.inline_data is not None:
             image = part.as_image()
-            file_name = f"generated_comic_panel_{index + 1}.png"
+            file_name = f"generated_comic_panel.png"
             image.save(file_name)  # type: ignore
             print(f"Generated comic panel saved to {file_name}")
-    
+
 # ============================================================================
 # CLI Entry Point (unused in web interface)
 # ============================================================================
