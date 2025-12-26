@@ -74,13 +74,13 @@ tal_parliament_member_agent = Agent(
 elad_parliament_member_agent = Agent(
     name=config['Elad']['name'],
     instructions=config['Elad']['instructions'],
-    model=gemini_model
+    model=azure_model
 )
 
 nadav_parliament_member_agent = Agent(
     name=config['Nadav']['name'],
     instructions=config['Nadav']['instructions'],
-    model=gemini_model
+    model=azure_model
 )
 
 itay_parliament_member_agent = Agent(
@@ -92,6 +92,12 @@ itay_parliament_member_agent = Agent(
 dor_parliament_member_agent = Agent(
     name=config['Dor']['name'],
     instructions=config['Dor']['instructions'],
+    model=gemini_model
+)
+
+itay_parliament_member_agent = Agent(
+    name=config['Itay']['name'],
+    instructions=config['Itay']['instructions'],
     model=gemini_model
 )
 
@@ -120,6 +126,10 @@ dor_parliament_member_tool = dor_parliament_member_agent.as_tool(
     tool_name='dor_parliament_member',
     tool_description=config['Dor']['instructions']
 )
+
+itay_parliament_member_tool = itay_parliament_member_agent.as_tool(
+    tool_name='itay_parliament_member',
+    tool_description=config['Itay']['instructions'])
 
 # ============================================================================
 # File I/O Tools
@@ -183,6 +193,7 @@ scripter_agent = Agent(
         nadav_parliament_member_tool,
         itay_parliament_member_tool,
         dor_parliament_member_tool,
+        itay_parliament_member_tool,
     ],
     handoffs=[english_hebrew_translator_agent]
 )
@@ -221,17 +232,18 @@ def create_comic_panel() -> Image.Image | None:
     google_api_key = os.getenv("GOOGLE_API_KEY")
     client = genai.Client(api_key=google_api_key)  # type: ignore
 
-    prompt = """Create an image with all the members together in a single panel, saying togther: Leha'im! (Cheers!)
-    Panel members names: Dor, Elad, Ido, Nadav, Tal (IN THAT ORDER!According to the images provided).
+    prompt = """Create a LANDSCAPE image with all the members together in a single panel, saying togther: Leha'im! (Cheers!)
+    Panel members names: Dor, Elad, Ido, Itay, Nadav, Tal (IN THAT ORDER!According to the images provided).
     The panel members age is 43 years old. Stay true to images provided. 
     When creating the comic panel, ensure each character's appearance aligns with their respective images.
     use the images name as reference for each character appearance.!!! MUST USE THE IMAGES PROVIDED AS REFERENCE FOR CHARACTER APPEARANCE AND STYLE!!!!!
     **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
-    ALL 5 MEMBERS ARE TOGETHER IN THE SAME PANEL, CHEERING TOGETHER! MUST HAVE ALL 5 MEMBERS IN THE SAME PANEL!
+    ALL 6 MEMBERS ARE TOGETHER IN THE SAME PANEL, CHEERING TOGETHER! MUST HAVE ALL 6 MEMBERS IN THE SAME PANEL!
     **Style:** Cartoonish, vibrant colors, exaggerated expressions, dynamic poses, speech bubbles with "Leha'im!" text.
-    **Composition:** Balanced layout with members evenly spaced, engaging body language, and clear visibility of facial features.
+    **Composition:** LANDSCAPE ! Balanced layout with members evenly spaced, engaging body language, and clear visibility of facial features.
     **Mood:** Joyful, celebratory, energetic atmosphere reflecting camaraderie and fun.
     **Additional Elements:** Include background details like bar counter, drinks, and other patrons to enhance the setting.
+    IMAGE MUST be in LANDSCAPE orientation.
     """
 
     style_images = get_parliament_images()

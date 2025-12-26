@@ -138,7 +138,7 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
     
     return "❌ Unexpected error occurred", "", None
 
-def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[str, str, any, str]:
+def process_topic(topic: str, progress: gr.Progress = gr.Progress()) -> Tuple[str, str, Any, str]:
     """Process user topic through validation and parliament generation pipeline.
     
     Args:
@@ -206,11 +206,17 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
             )
     
     # Error display area
-    with gr.Row():
+    with gr.Row(max_height=200):
         error_alert = gr.HTML(value="", visible=False)
     
     gr.Markdown("---")
     
+    with gr.Row():
+        # create image placeholder
+        comic_image = gr.Image(label="🎨 Generated Comic Panel", 
+                               type="pil",
+                               visible=False)
+
     with gr.Row():
         with gr.Column():
             gr.Markdown("### 📜 Original Script (English)")
@@ -229,11 +235,6 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
 
                 text_align="right"
             )
-    with gr.Row():
-        # create image placeholder
-        comic_image = gr.Image(label="🎨 Generated Comic Panel", 
-                               type="pil",
-                               visible=False)
     
 
     
