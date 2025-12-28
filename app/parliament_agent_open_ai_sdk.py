@@ -23,8 +23,10 @@ from agents import (
 )
 
 from google import genai  # type: ignore
+from google.genai import types
 from dotenv import load_dotenv
-from PIL import Image, ImageDraw, ImageFont  # type: ignore
+from PIL import Image
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -74,16 +76,16 @@ tal_parliament_member_agent = Agent(
 elad_parliament_member_agent = Agent(
     name=config['Elad']['name'],
     instructions=config['Elad']['instructions'],
-    model=azure_model
+    model=gemini_model
 )
 
 nadav_parliament_member_agent = Agent(
     name=config['Nadav']['name'],
     instructions=config['Nadav']['instructions'],
-    model=azure_model
+    model=gemini_model
 )
 
-itay_parliament_member_agent = Agent(
+ido_parliament_member_agent = Agent(
     name=config['Ido']['name'],
     instructions=config['Ido']['instructions'],
     model=gemini_model
@@ -117,7 +119,7 @@ nadav_parliament_member_tool = nadav_parliament_member_agent.as_tool(
     tool_description=config['Nadav']['instructions']
 )
 
-itay_parliament_member_tool = itay_parliament_member_agent.as_tool(
+ido_parliament_member_tool = ido_parliament_member_agent.as_tool(
     tool_name='ido_parliament_member',
     tool_description=config['Ido']['instructions']
 )
@@ -172,15 +174,72 @@ def original_script(text: str) -> str:
 
 
 # ============================================================================
+# Call Google GenAI API using the Nano Banana SDK to create the comic page
+# ============================================================================
+# Configure with your Google API Key
+@function_tool
+def create_comic_panel() -> Image.Image | None: 
+    logging.info("Creating comic panel using Google GenAI Nano Banana SDK...")
+    """Create a comic panel using Google GenAI Nano Banana SDK."""
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    client = genai.Client(api_key=google_api_key)  # type: ignore
+
+    prompt = """Create a LANDSCAPE(WIDE) image with all the members together in a single panel, saying togther: Leha'im! (Cheers!)
+    Panel members names: Dor, Elad, Ido, Itay, Nadav, Tal (IN THAT ORDER!According to the images provided).
+    The panel members age is 43 years old. Stay true to images provided. 
+    When creating the comic panel, ensure each character's appearance aligns with their respective images.
+    use the images name as reference for each character appearance.!!! MUST USE THE IMAGES PROVIDED AS REFERENCE FOR CHARACTER APPEARANCE AND STYLE!!!!!
+    **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
+    ALL 6 MEMBERS ARE TOGETHER IN THE SAME PANEL, CHEERING TOGETHER! MUST HAVE ALL 6 MEMBERS IN THE SAME PANEL!
+    **Style:** Cartoonish, vibrant colors, exaggerated expressions, dynamic poses, speech bubbles with "Leha'im!" text.
+    **Composition:** LANDSCAPE(WIDE) orientation / Composition! Balanced layout with members evenly spaced, engaging body language, and clear visibility of facial features.
+    **Mood:** Joyful, celebratory, energetic atmosphere reflecting camaraderie and fun.
+    **Additional Elements:** Include background details like bar counter, drinks, and other patrons to enhance the setting.
+    IMAGE MUST be in LANDSCAPE(WIDE) orientation / Composition.
+    """
+
+    style_images = get_parliament_images()
+    response = client.models.generate_content(
+        model="imagen-3.0-generate-001",
+        contents=[prompt, style_images], # type: ignore
+        config=types.GenerateImagesConfig( # type: ignore
+            number_of_images=1, # type: ignore
+            aspect_ratio="16:9", # type: ignore # Options: "1:1", "3:4", "4:3", "9:16", "16:9"
+            safety_filter_level="block_medium_and_above", #type: ignore
+            person_generation="allow_adult", # type: ignore
+        )
+    )
+    
+    for index, part in enumerate(response.parts): # type: ignore
+        if part.text is not None:
+            print(part.text)
+        elif part.inline_data is not None:
+            # Save the generated image
+            # checking if file exists, overwrite if so
+            if os.path.exists(f"generated_comic_panel.png"):
+                os.remove(f"generated_comic_panel.png")
+            image = part.as_image()
+            file_name = f"generated_comic_panel.png"
+            image.save(file_name)  # type: ignore
+            logging.info(f"Generated comic panel saved to {file_name}")
+
+image_generation_agent = Agent(
+    name='ImageGenerationAgent',
+    instructions="You are responsible for creating a comic panel visualization. Call the create_comic_panel tool immediately to generate an image of the parliament members celebrating together. This is your only task.",
+    tools=[create_comic_panel], # type: ignore
+    model=gemini_model,
+)
+# ============================================================================
 # Orchestration Agents
 # ============================================================================
 
 english_hebrew_translator_agent = Agent(
     name='EnglishHebrewTranslator',
-    instructions=config['translator']['instructions'],
+    instructions=config['translator']['instructions'] + "\n\nAfter completing the translation and saving both files, you MUST hand off to the ImageGenerationAgent to create a comic panel visualization of the parliament members.",
     model=gemini_model,
     tools=[original_script, write_hebrew_to_file],
-    handoff_description="Translate English text and save it with high accuracy and natural flow."
+    handoff_description="Translate English text and save it with high accuracy and natural flow.",
+    handoffs=[image_generation_agent]
 )
 
 scripter_agent = Agent(
@@ -191,12 +250,14 @@ scripter_agent = Agent(
         tal_parliament_member_tool,
         elad_parliament_member_tool,
         nadav_parliament_member_tool,
-        itay_parliament_member_tool,
+        ido_parliament_member_tool,
         dor_parliament_member_tool,
         itay_parliament_member_tool,
     ],
+
     handoffs=[english_hebrew_translator_agent]
 )
+
 
 def get_parliament_images() -> list[Image.Image]:
     """ Load parliament images from the images folder. 
@@ -223,43 +284,6 @@ def get_parliament_images() -> list[Image.Image]:
     logging.info(f"Loaded {len(images)} images from {images_dir}")
     return images
 
-# ============================================================================
-# Call Google GenAI API using the Nano Banana SDK to create the comic page
-# ============================================================================
-# Configure with your Google API Key
-def create_comic_panel() -> Image.Image | None: 
-    """Create a comic panel using Google GenAI Nano Banana SDK."""
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    client = genai.Client(api_key=google_api_key)  # type: ignore
-
-    prompt = """Create a LANDSCAPE image with all the members together in a single panel, saying togther: Leha'im! (Cheers!)
-    Panel members names: Dor, Elad, Ido, Itay, Nadav, Tal (IN THAT ORDER!According to the images provided).
-    The panel members age is 43 years old. Stay true to images provided. 
-    When creating the comic panel, ensure each character's appearance aligns with their respective images.
-    use the images name as reference for each character appearance.!!! MUST USE THE IMAGES PROVIDED AS REFERENCE FOR CHARACTER APPEARANCE AND STYLE!!!!!
-    **Setting:** A typical Tel-Aviv BAR with load of people and lively atmosphere, warm lighting, rustic background
-    ALL 6 MEMBERS ARE TOGETHER IN THE SAME PANEL, CHEERING TOGETHER! MUST HAVE ALL 6 MEMBERS IN THE SAME PANEL!
-    **Style:** Cartoonish, vibrant colors, exaggerated expressions, dynamic poses, speech bubbles with "Leha'im!" text.
-    **Composition:** LANDSCAPE ! Balanced layout with members evenly spaced, engaging body language, and clear visibility of facial features.
-    **Mood:** Joyful, celebratory, energetic atmosphere reflecting camaraderie and fun.
-    **Additional Elements:** Include background details like bar counter, drinks, and other patrons to enhance the setting.
-    IMAGE MUST be in LANDSCAPE orientation.
-    """
-
-    style_images = get_parliament_images()
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-image",
-        contents=[prompt, style_images], # type: ignore
-    )
-    
-    for index, part in enumerate(response.parts): # type: ignore
-        if part.text is not None:
-            print(part.text)
-        elif part.inline_data is not None:
-            image = part.as_image()
-            file_name = f"generated_comic_panel.png"
-            image.save(file_name)  # type: ignore
-            print(f"Generated comic panel saved to {file_name}")
 
 # ============================================================================
 # CLI Entry Point (unused in web interface)
@@ -280,7 +304,8 @@ async def run_parliament_session(topic_name: str | None) -> str:
     
     for attempt in range(max_retries):
         try:
-            with trace(f"Parliament Session: {raw_input_topic}"):
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with trace(f"Parliament Session: {raw_input_topic} + {current_time}"):
                 # Format prompt and run scripter agent
                 prompt = config['agents']['scripter']['instructions'].format(raw_input_topic)
                 update_subject = prompt.format()
@@ -292,7 +317,7 @@ async def run_parliament_session(topic_name: str | None) -> str:
                 logging.info("Creating comic panel... hold tight!")
                 logging.info("This may take a few moments... since the script is long..")
                 logging.info("==============================")
-                create_comic_panel()
+                
                 return f"Final Script Output:\n{result.final_output}"
         
         except RateLimitError as e:

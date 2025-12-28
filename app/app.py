@@ -17,7 +17,7 @@ from agents import trace, Runner
 from guardrails_config import MyGuardrailsAgent
 
 # Import parliament components
-from parliament_agent_open_ai_sdk import config, scripter_agent, create_comic_panel
+from parliament_agent_open_ai_sdk import config, scripter_agent
 
 class GuardrailsValidationError(Exception):
     """Exception raised when guardrails validation fails.
@@ -70,7 +70,7 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
         try:
             with trace(f"Parliament Session: {topic}"):
                 # Format the prompt and run the scripter agent
-                prompt = config['agents']['scripter']['instructions'].format(topic)
+                prompt = config['agents']['scripter']['instructions'].format(topic + validation_result)
                 update_subject = prompt.format()
                 result = await Runner.run(scripter_agent, update_subject, max_turns=30)
                 logging.info("✅ Parliament session completed.")
@@ -85,7 +85,6 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
                     with open(output_path, 'r', encoding='utf-8') as f:
                         original_output = f.read()
                         # now, lets try to generate an image based on the script
-                        create_comic_panel()
                 except FileNotFoundError:
                     original_output = "Original script file not found."
                 except Exception as e:
@@ -108,9 +107,9 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
                         from PIL import Image
                         img = Image.open(parliament_image)
                         comic_image = img
-                        print(f"✅ Comic panel loaded successfully: {parliament_image}")
+                        logging.info(f"✅ Comic panel loaded successfully: {parliament_image}")
                     else:
-                        print(f"⚠️ Comic panel not found at: {parliament_image}")
+                        logging.warning(f"⚠️ Comic panel not found at: {parliament_image}")
                 except Exception as e:
                     logging.error(f"Error loading generated comic panel: {str(e)}")
 
@@ -196,6 +195,7 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
             
             gr.Examples( # type: ignore
                 examples=[
+                    ["Real estate market in Israel"],
                     ["climate change"],
                     ["education reform"],
                     ["healthcare policy"],
@@ -206,16 +206,21 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
             )
     
     # Error display area
-    with gr.Row(max_height=200):
+    with gr.Row():
         error_alert = gr.HTML(value="", visible=False)
     
     gr.Markdown("---")
     
-    with gr.Row():
+    with gr.Row(max_height=600):
         # create image placeholder
         comic_image = gr.Image(label="🎨 Generated Comic Panel", 
                                type="pil",
-                               visible=False)
+                               visible=False,
+                               height=600,
+
+                               )
+    gr.Markdown("---")
+    gr.Markdown("---")
 
     with gr.Row():
         with gr.Column():

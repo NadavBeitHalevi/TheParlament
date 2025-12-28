@@ -43,7 +43,7 @@ async def generate_parliamentary_script(script_topic: str) -> dict[str, Any]:
     )
     logging.info("Generated content from Gemini model.")
     logging.info("Processing generated content parts.")
-    for part in response.parts:
+    for part in response.parts: # type : ignore
         if part.text is not None:
             print(part.text)
         elif part.inline_data is not None:
@@ -52,10 +52,13 @@ async def generate_parliamentary_script(script_topic: str) -> dict[str, Any]:
             return {    
                 "script_topic": "image created",
                 "english_script": f"Simulated parliamentary script on the topic: {image}"
-    }
+            }
     
     logging.info(f"Generating parliamentary script for topic: {script_topic}")
-    # return f"Generating parliamentary script for topic: some topic"
+    return {
+        "script_topic": script_topic,
+        "english_script": f"Simulated parliamentary script on the topic: {script_topic}"
+    }
 
 @mcp.tool(name="hello_test_tool", 
           description="A simple tool that returns a greeting message.")
