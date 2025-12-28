@@ -92,22 +92,30 @@ async def run_parliament_session_ui(topic: str) -> Tuple[str, str, Any]:
                 
                 try:
                     output_path = os.path.join(os.path.dirname(__file__), '..', 'output_scripts', 'hebrew_output.txt')
-                    with open(output_path, 'r', encoding='utf-8') as f:
-                        hebrew_output = f.read()
+                    # Check file exists and is recent
+                    if os.path.exists(output_path):
+                        with open(output_path, 'r', encoding='utf-8') as f:
+                            hebrew_output = f.read()
+                        logging.info(f"✅ Hebrew translation loaded: {len(hebrew_output)} characters")
+                    else:
+                        hebrew_output = "Hebrew translation file not found."
                 except FileNotFoundError:
                     hebrew_output = "Hebrew translation file not found."
                 except Exception as e:
+                    logging.error(f"Error reading Hebrew translation: {str(e)}")
                     hebrew_output = f"Error reading Hebrew translation: {str(e)}"
                 
-                # Load the generated comic panel
+                # Load the generated comic panel - refresh from disk each time
                 comic_image = None
                 try:
                     parliament_image = os.path.join(os.path.dirname(__file__), '..', 'generated_comic_panel.png')
                     if os.path.exists(parliament_image):
                         from PIL import Image
+                        # Force reload from disk by creating new Image object
                         img = Image.open(parliament_image)
-                        comic_image = img
-                        logging.info(f"✅ Comic panel loaded successfully: {parliament_image}")
+                        img.load()  # Ensure image data is loaded
+                        comic_image = img.copy()  # Create a copy to avoid caching issues
+                        logging.info(f"✅ Comic panel loaded successfully: {parliament_image} (size: {img.size})")
                     else:
                         logging.warning(f"⚠️ Comic panel not found at: {parliament_image}")
                 except Exception as e:
@@ -237,8 +245,7 @@ with gr.Blocks(title="Parliament Script Generator", theme=Soft()) as demo:
                 label="תרגום עברי",
                 lines=20,
                 max_lines=30,
-
-                text_align="right"
+                rtl=True
             )
     
 

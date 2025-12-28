@@ -106,32 +106,38 @@ itay_parliament_member_agent = Agent(
 # Convert agents to tools for use by scripter agent
 tal_parliament_member_tool = tal_parliament_member_agent.as_tool(
     tool_name='tal_parliament_member',
-    tool_description=config['Tal']['instructions']
+    tool_description=config['Tal']['instructions'],
+    is_enabled=True
 )
 
 elad_parliament_member_tool = elad_parliament_member_agent.as_tool(
     tool_name='elad_parliament_member',
-    tool_description=config['Elad']['instructions']
+    tool_description=config['Elad']['instructions'],
+    is_enabled=True
 )
 
 nadav_parliament_member_tool = nadav_parliament_member_agent.as_tool(
     tool_name='nadav_parliament_member',
-    tool_description=config['Nadav']['instructions']
+    tool_description=config['Nadav']['instructions'],
+    is_enabled=True
 )
 
 ido_parliament_member_tool = ido_parliament_member_agent.as_tool(
     tool_name='ido_parliament_member',
-    tool_description=config['Ido']['instructions']
+    tool_description=config['Ido']['instructions'],
+    is_enabled=True
 )
 
 dor_parliament_member_tool = dor_parliament_member_agent.as_tool(
     tool_name='dor_parliament_member',
-    tool_description=config['Dor']['instructions']
+    tool_description=config['Dor']['instructions'],
+    is_enabled=True
 )
 
 itay_parliament_member_tool = itay_parliament_member_agent.as_tool(
     tool_name='itay_parliament_member',
-    tool_description=config['Itay']['instructions'])
+    tool_description=config['Itay']['instructions'],
+    is_enabled=True)
 
 # ============================================================================
 # File I/O Tools
@@ -177,9 +183,9 @@ def original_script(text: str) -> str:
 # Call Google GenAI API using the Nano Banana SDK to create the comic page
 # ============================================================================
 # Configure with your Google API Key
-@function_tool
 def create_comic_panel() -> Image.Image | None: 
     logging.info("Creating comic panel using Google GenAI Nano Banana SDK...")
+    print("Creating comic panel using Google GenAI Nano Banana SDK...")
     """Create a comic panel using Google GenAI Nano Banana SDK."""
     google_api_key = os.getenv("GOOGLE_API_KEY")
     client = genai.Client(api_key=google_api_key)  # type: ignore
@@ -199,17 +205,19 @@ def create_comic_panel() -> Image.Image | None:
     """
 
     style_images = get_parliament_images()
-    response = client.models.generate_content(
-        model="imagen-3.0-generate-001",
-        contents=[prompt, style_images], # type: ignore
-        config=types.GenerateImagesConfig( # type: ignore
-            number_of_images=1, # type: ignore
-            aspect_ratio="16:9", # type: ignore # Options: "1:1", "3:4", "4:3", "9:16", "16:9"
-            safety_filter_level="block_medium_and_above", #type: ignore
-            person_generation="allow_adult", # type: ignore
-        )
-    )
     
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image",
+            contents=[prompt, style_images], # type: ignore
+        )
+    except Exception as e:
+        logging.error(f"Error generating image: {e}")
+        print(f"Error generating image: {e}")
+        return None
+
+    print("Comic panel generation response received.")
+    logging.info("Comic panel generation response received.")
     for index, part in enumerate(response.parts): # type: ignore
         if part.text is not None:
             print(part.text)
@@ -222,24 +230,18 @@ def create_comic_panel() -> Image.Image | None:
             file_name = f"generated_comic_panel.png"
             image.save(file_name)  # type: ignore
             logging.info(f"Generated comic panel saved to {file_name}")
+            return image  # type: ignore
+    return None
 
-image_generation_agent = Agent(
-    name='ImageGenerationAgent',
-    instructions="You are responsible for creating a comic panel visualization. Call the create_comic_panel tool immediately to generate an image of the parliament members celebrating together. This is your only task.",
-    tools=[create_comic_panel], # type: ignore
-    model=gemini_model,
-)
 # ============================================================================
 # Orchestration Agents
 # ============================================================================
 
 english_hebrew_translator_agent = Agent(
     name='EnglishHebrewTranslator',
-    instructions=config['translator']['instructions'] + "\n\nAfter completing the translation and saving both files, you MUST hand off to the ImageGenerationAgent to create a comic panel visualization of the parliament members.",
+    instructions=config['translator']['instructions'],
     model=gemini_model,
     tools=[original_script, write_hebrew_to_file],
-    handoff_description="Translate English text and save it with high accuracy and natural flow.",
-    handoffs=[image_generation_agent]
 )
 
 scripter_agent = Agent(
@@ -310,13 +312,22 @@ async def run_parliament_session(topic_name: str | None) -> str:
                 prompt = config['agents']['scripter']['instructions'].format(raw_input_topic)
                 update_subject = prompt.format()
                 logging.info(f"🤖 Running Scripter Agent...")
+                print(f"🤖 Running Scripter Agent...")
                 result = await Runner.run(scripter_agent, update_subject, max_turns=30)
                 logging.info("✅ Scripter Agent completed.")
-                # trying to create comic panel
+                
+                # Generate comic panel after agent completes
                 logging.info("==============================")
                 logging.info("Creating comic panel... hold tight!")
-                logging.info("This may take a few moments... since the script is long..")
+                logging.info("This may take a few moments...")
                 logging.info("==============================")
+                print("==============================")
+                print("Creating comic panel... hold tight!")
+                print("This may take a few moments...")
+                print("==============================")
+                
+                # Call the comic panel generation function directly
+                create_comic_panel()
                 
                 return f"Final Script Output:\n{result.final_output}"
         
